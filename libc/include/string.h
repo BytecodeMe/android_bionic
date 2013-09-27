@@ -120,8 +120,27 @@ char *strcpy(char *dest, const char *src) {
 }
 
 __BIONIC_FORTIFY_INLINE
-char *strncpy(char *dest, const char *src, size_t n) {
-    return __builtin___strncpy_chk(dest, src, n, __builtin_object_size (dest, 0));
+char* strncpy(char* __restrict dest, const char* __restrict src, size_t n) {
+    size_t bos_dest = __bos(dest);
+    size_t bos_src = __bos(src);
+    if (__builtin_constant_p(n) && (n > bos_dest)) {
+        __strncpy_error();
+    }
+
+    if (bos_src == __BIONIC_FORTIFY_UNKNOWN_SIZE) {
+        return __builtin___strncpy_chk(dest, src, n, bos_dest);
+    }
+
+    if (__builtin_constant_p(n) && (n <= bos_src)) {
+        return __builtin___strncpy_chk(dest, src, n, bos_dest);
+    }
+
+    size_t slen = __builtin_strlen(src);
+    if (__builtin_constant_p(slen)) {
+        return __builtin___strncpy_chk(dest, src, n, bos_dest);
+    }
+
+    return __strncpy_chk2(dest, src, n, bos_dest, bos_src);
 }
 
 __BIONIC_FORTIFY_INLINE
